@@ -39,16 +39,13 @@
               >
                 <validation-provider
                   #default="{ errors }"
-                  name="Email"
-                  vid="email"
-                  rules="required|email"
+                  name="Kode Marking"
+                  rules="required"
                 >
                   <b-form-input
-                    id="login-email"
-                    v-model="userEmail"
+                    v-model="form.kode_marking"
                     :state="errors.length > 0 ? false:null"
-                    name="login-email"
-                    placeholder="john@example.com"
+                    placeholder="123/ID Marking"
                   />
                   <small class="text-danger">{{ errors[0] }}</small>
                 </validation-provider>
@@ -58,14 +55,10 @@
               <b-form-group>
                 <div class="d-flex justify-content-between">
                   <label for="login-password">Password</label>
-                  <!-- <b-link :to="{name:'auth-forgot-password'}">
-                    <small>Forgot Password?</small>
-                  </b-link> -->
                 </div>
                 <validation-provider
                   #default="{ errors }"
                   name="Password"
-                  vid="password"
                   rules="required"
                 >
                   <b-input-group
@@ -74,7 +67,7 @@
                   >
                     <b-form-input
                       id="login-password"
-                      v-model="password"
+                      v-model="form.password"
                       :state="errors.length > 0 ? false:null"
                       class="form-control-merge"
                       :type="passwordFieldType"
@@ -97,7 +90,6 @@
               <b-button
                 type="submit"
                 variant="primary"
-                style="background-color: #a21f1e !important"
                 block
                 :disabled="invalid"
               >
@@ -138,6 +130,7 @@
 </template>
 
 <script>
+import axios from 'axios'
 /* eslint-disable global-require */
 import { ValidationProvider, ValidationObserver } from 'vee-validate'
 import VuexyLogo from '@core/layouts/components/Logo.vue'
@@ -179,8 +172,10 @@ export default {
   data() {
     return {
       status: '',
-      password: 'admin',
-      userEmail: 'admin@demo.com',
+      form: {
+        kode_marking: '',
+        password: ''
+      },
       sideImg: require('@/assets/images/internal/bg-4.jpg'),
       loginImg: require('@/assets/images/internal/logo.png'),
       // validation rules
@@ -202,44 +197,88 @@ export default {
     },
   },
   methods: {
-    login() {
-      this.$refs.loginForm.validate().then(success => {
-        if (success) {
-          useJwt.login({
-            email: this.userEmail,
-            password: this.password,
-          })
-            .then(response => {
-              const { userData } = response.data
-              useJwt.setToken(response.data.accessToken)
-              useJwt.setRefreshToken(response.data.refreshToken)
-              localStorage.setItem('userData', JSON.stringify(userData))
-              this.$ability.update(userData.ability)
-
-              // ? This is just for demo purpose as well.
-              // ? Because we are showing eCommerce app's cart items count in navbar
-              this.$store.commit('app-ecommerce/UPDATE_CART_ITEMS_COUNT', userData.extras.eCommerceCartItemsCount)
-
-              // ? This is just for demo purpose. Don't think CASL is role based in this case, we used role in if condition just for ease
-              this.$router.replace(getHomeRouteForLoggedInUser(userData.role))
-                .then(() => {
-                  this.$toast({
-                    component: ToastificationContent,
-                    position: 'top-right',
-                    props: {
-                      title: `Welcome ${userData.fullName || userData.username}`,
-                      icon: 'CoffeeIcon',
-                      variant: 'success',
-                      text: `You have successfully logged in as ${userData.role}. Now you can start to explore!`,
-                    },
-                  })
-                })
-                .catch(error => {
-                  this.$refs.loginForm.setErrors(error.response.data.error)
-                })
-            })
-        }
+    notif(title, icon, variant) {
+      this.$toast({
+        component: ToastificationContent,
+        position: 'top-right',
+        props: {
+          title: title,
+          icon: icon,
+          variant: variant,
+        },
       })
+    },
+    login() {
+      axios
+        .post(`/api/auth/login`, this.form)
+        .then(response => {
+          if(response.data.code === 201) {
+            return this.notif(response.data.message, 'CoffeeIcon', 'danger')
+          }
+
+          let userData = response.data.userData[0]
+          userData.ability = [{action: "manage", subject: "all"}]
+          userData.avatar = 'avatarasem.jpg'
+          useJwt.setToken(response.data.accessToken)
+          useJwt.setRefreshToken(response.data.refreshToken)
+          localStorage.setItem('userData', JSON.stringify(userData))
+
+          this.notif(response.data.message, 'CoffeeIcon', 'success')
+          setTimeout(()=>{
+            this.$router.push('/dashboard/ecommerce')
+          },2000)
+        })
+        .catch(error => {
+          this.$toast({
+            component: ToastificationContent,
+            position: 'top-right',
+            props: {
+              title: `Ada kesalahan otentikasi`,
+              icon: 'CoffeeIcon',
+              variant: 'danger',
+            },
+          })
+        })
+      
+      
+      // this.$refs.loginForm.validate().then(success => {
+      //   if (success) {
+      //     useJwt.login({
+      //       email: this.userEmail,
+      //       password: this.password,
+      //     })
+      //       .then(response => {
+      //         console.log(response)
+      //         const { userData } = response.data
+      //         useJwt.setToken(response.data.accessToken)
+      //         useJwt.setRefreshToken(response.data.refreshToken)
+      //         localStorage.setItem('userData', JSON.stringify(userData))
+      //         this.$ability.update(userData.ability)
+
+      //         // ? This is just for demo purpose as well.
+      //         // ? Because we are showing eCommerce app's cart items count in navbar
+      //         this.$store.commit('app-ecommerce/UPDATE_CART_ITEMS_COUNT', userData.extras.eCommerceCartItemsCount)
+
+      //         // ? This is just for demo purpose. Don't think CASL is role based in this case, we used role in if condition just for ease
+      //         this.$router.replace(getHomeRouteForLoggedInUser(userData.role))
+      //           .then(() => {
+      //             this.$toast({
+      //               component: ToastificationContent,
+      //               position: 'top-right',
+      //               props: {
+      //                 title: `Welcome ${userData.fullName || userData.username}`,
+      //                 icon: 'CoffeeIcon',
+      //                 variant: 'success',
+      //                 text: `You have successfully logged in as ${userData.role}. Now you can start to explore!`,
+      //               },
+      //             })
+      //           })
+      //           .catch(error => {
+      //             this.$refs.loginForm.setErrors(error.response.data.error)
+      //           })
+      //       })
+      //   }
+      // })
     },
   },
 }

@@ -25,8 +25,8 @@ import { useWindowSize, useCssVar } from '@vueuse/core'
 
 import store from '@/store'
 
-const LayoutVertical = () => import('@/layouts/vertical/LayoutVertical.vue')
-const LayoutHorizontal = () => import('@/layouts/horizontal/LayoutHorizontal.vue')
+const LayoutVertical = () => import('@/layouts/horizontal/LayoutHorizontal.vue')
+const LayoutHorizontal = () => import('@/layouts/vertical/LayoutVertical.vue') 
 const LayoutFull = () => import('@/layouts/full/LayoutFull.vue')
 
 export default {

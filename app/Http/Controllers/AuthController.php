@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use App\Models\User;
 use App\Models\Customer;
 use Validator;
+use Hash;
 
 class AuthController extends Controller
 {
@@ -99,31 +100,62 @@ class AuthController extends Controller
   * @return [string] token_type
   * @return [string] expires_at
   */
-  public function login(Request $request)
-  {
-    $request->validate([
-      'email' => 'required|string|email',
-      'password' => 'required|string',
-      'remember_me' => 'boolean'
-    ]);
-    $credentials = request(['email', 'password']);
-    if(!Auth::attempt($credentials))
-      return response()->json([
-        'message' => 'Unauthorized'
-      ], 401);
-    $user = $request->user();
-    $tokenResult = $user->createToken('Personal Access Token');
-    $token = $tokenResult->token;
-    if ($request->remember_me)
-      $token->expires_at = Carbon::now()->addWeeks(1);
-    $token->save();
-    return response()->json([
-      'access_token' => $tokenResult->accessToken,
-      'token_type' => 'Bearer',
-      'expires_at' => Carbon::parse(
-        $tokenResult->token->expires_at
-      )->toDateTimeString()
-    ]);
+  public function login(Request $request) {
+    $cek_user = Customer::select('id','kode','email','nama','username','password')
+    ->where('kode', '123/'.$request->kode_marking)
+    ->get();
+    if (count($cek_user) >= 1) {
+      if (Hash::check($request->password, $cek_user[0]->password)) {
+        $token = bin2hex(random_bytes(20));
+        return response()->json(array(
+          'userData' => $cek_user,
+          'code' => 200,
+          'message' => 'Login berhasil!',
+          'accessToken' => $token,
+          'refreshToken' => $token,
+          'token_type' => 'Bearer'
+        ), 200);
+      } else {
+        return response()->json(array(
+          'code'      =>  201,
+          'message'   =>  'Password salah!'
+        ), 201);
+      }
+      
+    } else {
+      return response()->json(array(
+        'code'      =>  201,
+        'message'   =>  'Akun tidak ditemukan!'
+      ), 201);
+    }
   }
+  // public function login(Request $request)
+  // {
+  //   $request->validate([
+  //     'email' => 'required|string|email',
+  //     'password' => 'required|string',
+  //     'remember_me' => 'boolean'
+  //   ]);
+  //   $credentials = request(['email', 'password']);
+  //   if(!Auth::attempt($credentials))
+  //     return response()->json([
+  //       'message' => 'Unauthorized'
+  //     ], 401);
+  //   $user = $request->user();
+  //   $tokenResult = $user->createToken('Personal Access Token');
+  //   $token = $tokenResult->token;
+  //   if ($request->remember_me)
+  //     $token->expires_at = Carbon::now()->addWeeks(1);
+  //   // $token->save();
+  //   return response()->json([
+  //     'accessToken' => $tokenResult->accessToken,
+  //     'refreshToken' => $tokenResult->accessToken,
+  //     'userData' => $user,
+  //     'token_type' => 'Bearer',
+  //     'expires_at' => Carbon::parse(
+  //       $tokenResult->token->expires_at
+  //     )->toDateTimeString()
+  //   ]);
+  // }
   
 }
